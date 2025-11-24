@@ -1,5 +1,14 @@
 # hass-gelight
 
+## LICENSE
+⚠️ Please note that this fork includes modifications which are released under GNU GPLv3. https://choosealicense.com/licenses/gpl-3.0/
+
+### _Why GNU GPLv3?_
+
+GNU GPLv3 is a [copyleft license](https://fossa.com/blog/all-about-copyleft-licenses/) - meaning it has a strong open-source philosophy and restricts what entities attempting to use the software for profit may do with it. 
+
+If you are working in FOSS or nonprofit spaces, and some situation requires that you use need the code under another license, please contact me to discuss the details.
+
 ## What is it
 This Home assistant custome components works for C by GE Smart Lights.
 E.g.
