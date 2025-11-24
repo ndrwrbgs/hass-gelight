@@ -118,15 +118,15 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
     for light in lights:
       mesh.devices[light.id]=light
     #retry 3 times
-    await hass.async_add_executor_job(mesh.connect)
+    await mesh.connect()
     async def async_update(now=None):
-        await hass.async_add_executor_job(mesh.update_status)
+        await mesh.update_status()
     async_track_time_interval(hass, async_update, SCAN_INTERVAL)
 
 class GEDevice(LightEntity):
     """Representation of a GE light."""
 
-    def __init__(self, hass,network,mac,
+    def __init__(self, hass,network: 'laurel_mesh',mac,
         lightid,name,type,max_brightness,min_brightness,icon=None):
         """Initialize the GE light."""
         self.hass = hass
@@ -288,34 +288,36 @@ class GEDevice(LightEntity):
             return True
         self.support_temp=False
         return False
-    def set_color_temp(self, temperature):
-        self.network.send_packet(self.id, 0xe2, [0x05, int(self.ratio*(temperature-self.max_mireds))])
+    async def set_color_temp(self, temperature):
+        await self.network.send_packet(self.id, 0xe2, [0x05, int(self.ratio*(temperature-self.max_mireds))])
         self._temperature = temperature
-    def set_brightness(self, brightness):
-        self.network.send_packet(self.id, 0xd2, [(100*brightness//255)])
+    async def set_brightness(self, brightness):
+        await self.network.send_packet(self.id, 0xd2, [(100*brightness//255)])
         self._brightness = brightness
-    def set_hs(self, hs_color):
+    async def set_hs(self, hs_color):
         self._color = hs_color
         hue, saturation = hs_color
         red, green, blue = colorutil.color_hsv_to_RGB(hue, saturation, self._brightness*100/255)
-        self.network.send_packet(self.id, 0xe2, [0x04, red, green, blue])
+        await self.network.send_packet(self.id, 0xe2, [0x04, red, green, blue])
         self.red = red
         self.green = green
         self.blue = blue
 
-    def set_power(self, power):
-        self.network.send_packet(self.id, 0xd0, [int(power)])
+    async def set_power(self, power):
+        await self.network.send_packet(self.id, 0xd0, [int(power)])
         self.power=power
 
-    def update(self):
-        self.network.send_packet(self.id, 0xda, [])
+    async def update(self):
+        await self.network.send_packet(self.id, 0xda, [])
     async def async_update(self):
       if self.id==0:
-        await self.hass.async_add_executor_job(self.update)
+        await self.update()
     @property
     def assumed_state(self):
         return True
 class laurel_mesh:
+    link: dimond.dimond
+    
     def __init__(self, address, password):
         self.address = str(address)
         self.password = str(password)
@@ -361,5 +363,5 @@ class laurel_mesh:
         sleep(0.05)
         self.lock.release()
 
-    def update_status(self):
-        self.send_packet(0xffff, 0xda, [])
+    async def update_status(self):
+        await self.send_packet(0xffff, 0xda, [])
