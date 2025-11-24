@@ -95,7 +95,7 @@ debug_output = "{"
 # have a refresh token and user_id already?
 refresh_token = getpass.getpass("Refresh token (if available): ")
 user_id       = getpass.getpass("`user_id` (if available): ")
-is_debug      = getpass.getpass("Enable debug output? (y/N): ").lower() == "y"
+is_debug      = input("Enable debug output? (y/N): ").lower() == "y"
 
 # otherwise, get authenticate
 if not (refresh_token and user_id):
