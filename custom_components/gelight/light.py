@@ -13,7 +13,16 @@ Example configuration:
         type: typeid_from_ge
 """
 import voluptuous as vol
-from homeassistant.components.light import LightEntity, PLATFORM_SCHEMA, ATTR_BRIGHTNESS,ATTR_COLOR_TEMP,ATTR_HS_COLOR,SUPPORT_BRIGHTNESS,SUPPORT_COLOR,SUPPORT_COLOR_TEMP
+from homeassistant.components.light import (
+    LightEntity,
+    PLATFORM_SCHEMA,
+    ATTR_BRIGHTNESS,
+    ATTR_COLOR_TEMP,
+    ATTR_HS_COLOR,
+    LightEntityFeature,
+    ColorMode,
+)
+
 from homeassistant.const import (CONF_USERNAME, CONF_PASSWORD,CONF_HOST, CONF_ID, CONF_LIGHTS, CONF_NAME,CONF_MAC,CONF_TYPE)
 CONF_MAX_BRIGHT = 'max_brightness'
 CONF_MIN_BRIGHT = 'min_brightness'
@@ -21,6 +30,8 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.util import color as colorutil
 from time import time
 from time import sleep
+import sys
+sys.path.append('/config/deps/lib/python3.11/site-packages/')
 import dimond
 import threading
 from homeassistant.helpers.event import async_track_time_interval
@@ -140,6 +151,34 @@ class GEDevice(LightEntity):
         self.green = 0
         self.blue = 0
 
+        # --- New HA 2025.x color mode logic ---
+        color_modes = set()
+
+        if self.support_rgb():
+            color_modes.add(ColorMode.HS)
+        if self.support_color_temp():
+            color_modes.add(ColorMode.COLOR_TEMP)
+
+        # If no color modes, at least brightness support
+        if not color_modes:
+            color_modes.add(ColorMode.BRIGHTNESS)
+
+        self._attr_supported_color_modes = color_modes
+        self._attr_color_mode = next(iter(color_modes))
+
+        # Supported features (these are optional; brightness is handled by color_modes)
+        self._attr_supported_features = 0
+        if ColorMode.HS in color_modes:
+            self._attr_supported_features |= LightEntityFeature.EFFECT
+        if ColorMode.COLOR_TEMP in color_modes:
+            self._attr_supported_features |= LightEntityFeature.TRANSITION
+
+        # Add optional extras if applicable
+        if ColorMode.HS in color_modes:
+            self._attr_supported_features |= LightEntityFeature.EFFECT
+        if ColorMode.COLOR_TEMP in color_modes:
+            self._attr_supported_features |= LightEntityFeature.TRANSITION
+
     @property
     def unique_id(self):
         """Return the entity unique ID."""
@@ -226,33 +265,21 @@ class GEDevice(LightEntity):
     def color_temp(self):
         """Return the temperature of the light."""
         return int(self._temperature)
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        supports = SUPPORT_BRIGHTNESS
-        if self.support_rgb():
-            supports = supports | SUPPORT_COLOR
-        if self.support_color_temp():
-            supports = supports | SUPPORT_COLOR_TEMP
-        return supports
+
     def support_rgb(self):
         if self.type == 6 or \
            self.type == 7 or \
            self.type == 8 or \
            self.type == 21 or \
            self.type == 22 or \
-           self.type == 23 or \
-           self.type == 31:
+           self.type == 23:
             return True
         return False
     def support_color_temp(self):
         if self.support_rgb() or \
            self.type == 5 or \
-           self.type == 10 or \
-           self.type == 11 or \
            self.type == 19 or \
            self.type == 20 or \
-           self.type == 31 or \
            self.type == 80 or \
            self.type == 83 or \
            self.type == 85:
@@ -307,7 +334,7 @@ class laurel_mesh:
             # Try each device in turn - we only need to connect to one to be
             # on the mesh
             try:
-                self.link = dimond.dimond(0x0211, device.mac, self.address, self.password) #, self, callback)
+                self.link = dimond.dimond(0x0211, device.mac, self.address, self.password)#,self,callback)
                 self.link.connect()
                 break
             except Exception as e:
@@ -335,4 +362,3 @@ class laurel_mesh:
 
     def update_status(self):
         self.send_packet(0xffff, 0xda, [])
-
