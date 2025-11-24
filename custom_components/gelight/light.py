@@ -26,6 +26,7 @@ from homeassistant.components.light import (
 from homeassistant.const import (CONF_USERNAME, CONF_PASSWORD,CONF_HOST, CONF_ID, CONF_LIGHTS, CONF_NAME,CONF_MAC,CONF_TYPE)
 CONF_MAX_BRIGHT = 'max_brightness'
 CONF_MIN_BRIGHT = 'min_brightness'
+import asyncio
 import homeassistant.helpers.config_validation as cv
 from homeassistant.util import color as colorutil
 from time import time
@@ -323,10 +324,10 @@ class laurel_mesh:
         self.lock=threading.Lock()
     def __del__(self):
         if self.link:
-            if self.link.device:
-                 self.link.device.disconnect()
+            if self.link.client:
+                 asyncio.run(self.link.client.disconnect())
 
-    def connect(self):
+    async def connect(self):
         if self.link != None:
             return
 
@@ -335,7 +336,7 @@ class laurel_mesh:
             # on the mesh
             try:
                 self.link = dimond.dimond(0x0211, device.mac, self.address, self.password)#,self,callback)
-                self.link.connect()
+                await self.link.connect()
                 break
             except Exception as e:
                 _LOGGER.debug("Failed to connect to %s", device.mac)
@@ -344,17 +345,17 @@ class laurel_mesh:
         if self.link is None:
             raise Exception("Unable to connect to mesh %s" % self.address)
 
-    def send_packet(self, id, command, params):
+    async def send_packet(self, id, command, params):
         # the lock mechanism is to prevent the simutaneous packets if
         # you control two devices at the same time though a group.
         self.lock.acquire()
         try:
-          self.link.send_packet(id, command, params)
+          await self.link.send_packet(id, command, params)
         except:
           self.link=None
           try:
-            self.connect()
-            self.link.send_packet(id, command, params)
+            await self.connect()
+            await self.link.send_packet(id, command, params)
           except:
             pass
         sleep(0.05)
