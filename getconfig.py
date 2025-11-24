@@ -74,7 +74,7 @@ def get_devices(auth_token, user):
     headers = {'Access-Token': auth_token}
     r = requests.get(API_DEVICES.format(user=user), headers=headers,
                      timeout=API_TIMEOUT)
-    debug_output += "\"get_devices()\":" + r.text
+    debug_output += "\"get_devices()\":" + r.text + ","
     return r.json()
 
 def get_properties(auth_token, product_id, device_id):
@@ -87,7 +87,7 @@ def get_properties(auth_token, product_id, device_id):
         headers=headers,
         timeout=API_TIMEOUT
     )
-    debug_output +=  "," + "\"get_properties()\":" + r.text
+    debug_output +=  "\"get_properties()\":" + r.text + ","
     return r.json()
 
 errormsg = ""
@@ -134,7 +134,7 @@ print(errormsg)
 
 if (is_debug):
     import json
-    debug_json = debug_output + "}"
+    debug_json = debug_output[:-1] + "}"
     print("=================== debug output ===================")
     print(debug_json)
     print("========== debug output (pretty printed)  ==========")
