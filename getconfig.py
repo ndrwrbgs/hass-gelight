@@ -53,8 +53,9 @@ def authenticate():
             r.json()['refresh_token'],
             r.json()['user_id']
         )
-    except KeyError:
-        raise(LaurelException('API authentication failed'))
+    except KeyError as e:
+        raise RuntimeError('API authentication failed') from e
+
 
 def get_access_token (refresh_token):
     """Get new access_token for subsequent request"""
