@@ -33,7 +33,7 @@ from time import time
 from time import sleep
 import sys
 sys.path.append('/config/deps/lib/python3.11/site-packages/')
-from . import dimond
+import dimond
 import threading
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.device_registry import format_mac
@@ -219,23 +219,23 @@ class GEDevice(LightEntity):
             return int(((self._max_brightness - self._min_brightness) * ((100+self._cl.data['percent']) / 100)) + self._min_brightness)
     async def async_turn_on(self, **kwargs):
         """Turn light on."""
-        await self.hass.async_add_executor_job(self.set_power,True)
+        await self.set_power(True)
         brightness = kwargs.get(ATTR_BRIGHTNESS, None)
         _LOGGER.debug("%s: request brightness %s", self.entity_id, str(brightness))
         #manual brightness
         if brightness:
           #self._brightness = brightness
-          await self.hass.async_add_executor_job(self.set_brightness,brightness)
+          await self.set_brightness(brightness)
         else:
           #autobrightness if brightness is not set
           if CIRCADIAN_BRIGHTNESS:
             brightness = self.calc_brightness()
             _LOGGER.debug("%s: calculated brightness %s", self.entity_id, str(brightness))
-            await self.hass.async_add_executor_job(self.set_brightness,brightness)
+            await self.set_brightness(brightness)
         if self.support_temp:
           color_temp = kwargs.get(ATTR_COLOR_TEMP, None)
           if color_temp:
-            await self.hass.async_add_executor_job(self.set_color_temp,color_temp)
+            await self.set_color_temp(color_temp)
           else:
             #autocolortemp when brightness and color temp is not set
             if CIRCADIAN_BRIGHTNESS and not brightness:
@@ -243,16 +243,16 @@ class GEDevice(LightEntity):
               temperature = colorutil.color_temperature_kelvin_to_mired(kelvin)
               if self._temperature != temperature:
                 self._temperature = temperature
-                await self.hass.async_add_executor_job(self.set_color_temp, self._temperature)
+                await self.set_color_temp(self._temperature)
 
         if ATTR_HS_COLOR in kwargs:
-          await self.hass.async_add_executor_job(self.set_hs, kwargs[ATTR_HS_COLOR])
+          await self.set_hs(kwargs[ATTR_HS_COLOR])
         _LOGGER.debug("%s: adjusted brightness %s", self.entity_id, str(brightness))
         #self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs):
         """Turn light off."""
-        await self.hass.async_add_executor_job(self.set_power,False)
+        await self.set_power(False)
     @property
     def is_on(self):
         """Return true if light is on."""
