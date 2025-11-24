@@ -35,6 +35,7 @@ def authenticate():
     }
     r = requests.post(API_AUTH, json=auth_data, timeout=API_TIMEOUT)
     
+    print(f"2FA email being sent to {username}...")
     code = input("Enter emailed code: ")
     
     API_AUTH = "https://api.gelighting.com/v2/user_auth/two_factor"
@@ -69,7 +70,7 @@ def get_access_token (refresh_token):
 def get_devices(auth_token, user):
     """Get a list of devices for a particular user."""
     global debug_output
-    API_DEVICES = "https://api2.xlink.cn/v2/user/{user}/subscribe/devices"
+    API_DEVICES = "https://api.gelighting.com/v2/user/{user}/subscribe/devices"
     headers = {'Access-Token': auth_token}
     r = requests.get(API_DEVICES.format(user=user), headers=headers,
                      timeout=API_TIMEOUT)
@@ -79,7 +80,7 @@ def get_devices(auth_token, user):
 def get_properties(auth_token, product_id, device_id):
     """Get properties for a single device."""
     global debug_output
-    API_DEVICE_INFO = "https://api2.xlink.cn/v2/product/{product_id}/device/{device_id}/property"
+    API_DEVICE_INFO = "https://api.gelighting.com/v2/product/{product_id}/device/{device_id}/property"
     headers = {'Access-Token': auth_token}
     r = requests.get(
         API_DEVICE_INFO.format(product_id=product_id, device_id=device_id),
@@ -99,7 +100,7 @@ is_debug      = input("Enable debug output? (y/N): ").lower() == "y"
 
 # otherwise, get authenticate
 if not (refresh_token and user_id):
-    username = input("Cync Username/Email: ")
+    username = input("Cync/gelighting.com Username/Email: ")
     password = getpass.getpass()
     access_token, refresh_token, user_id = authenticate()
 
