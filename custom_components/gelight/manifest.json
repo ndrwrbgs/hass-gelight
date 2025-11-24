@@ -8,5 +8,5 @@
     "@ndrwrbgs"
   ],
   "iot_class": "local_polling",
-  "requirements": ["dimond","bluepy"]
+  "requirements": ["bluepy"]
 }
