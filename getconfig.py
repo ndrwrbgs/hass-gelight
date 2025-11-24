@@ -99,36 +99,41 @@ user_id       = getpass.getpass("`user_id` (if available): ")
 is_debug      = input("Enable debug output? (y/N): ").lower() == "y"
 
 # otherwise, get authenticate
-if not (refresh_token and user_id):
-    username = input("Cync/gelighting.com Username/Email: ")
-    password = getpass.getpass()
-    access_token, refresh_token, user_id = authenticate()
+try:
+    if not (refresh_token and user_id):
+        username = input("Cync/gelighting.com Username/Email: ")
+        password = getpass.getpass()
+        access_token, refresh_token, user_id = authenticate()
 
-print("light:")
-devices = get_devices(get_access_token(refresh_token), user_id)
-for device in devices:
-    product_id = device['product_id']
-    device_id  = device['id']
-    username   = device['mac']
-    access_key = device['access_key']
-    print("  - platform: gelight")
-    print("    password: {}".format(access_key))
-    print("    username: {}".format(username))
-    print("    lights:")
-    device_info = get_properties(get_access_token(refresh_token), product_id, device_id)
-    try:
-        for bulb in device_info['bulbsArray']:
-            id          = int(bulb['deviceID']) % 1000
-            mac         = [bulb['mac'][i:i+2] for i in range(0, 12, 2)]
-            mac         = "%s:%s:%s:%s:%s:%s" % (mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
-            name        = bulb['displayName']
-            device_type = bulb['deviceType']
-            print("      - id: {}".format(id))
-            print("        mac: {}".format(mac.lower()))
-            print("        name: {}".format(name))
-            print("        type: {}".format(device_type))
-    except KeyError:
-        errormsg+="Warning: Missing bulb info.\n"
+    print("light:")
+    devices = get_devices(get_access_token(refresh_token), user_id)
+    for device in devices:
+        product_id = device['product_id']
+        device_id  = device['id']
+        username   = device['mac']
+        access_key = device['access_key']
+        print("  - platform: gelight")
+        print("    password: {}".format(access_key))
+        print("    username: {}".format(username))
+        print("    lights:")
+        device_info = get_properties(get_access_token(refresh_token), product_id, device_id)
+        try:
+            for bulb in device_info['bulbsArray']:
+                id          = int(bulb['deviceID']) % 1000
+                mac         = [bulb['mac'][i:i+2] for i in range(0, 12, 2)]
+                mac         = "%s:%s:%s:%s:%s:%s" % (mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
+                name        = bulb['displayName']
+                device_type = bulb['deviceType']
+                print("      - id: {}".format(id))
+                print("        mac: {}".format(mac.lower()))
+                print("        name: {}".format(name))
+                print("        type: {}".format(device_type))
+        except KeyError:
+            errormsg+="Warning: Missing bulb info.\n"
+except Exception:
+    print("!!Error while fetching light information")
+    # Force debug as that's where the good information is
+    is_debug = True
 
 print(errormsg)
 
