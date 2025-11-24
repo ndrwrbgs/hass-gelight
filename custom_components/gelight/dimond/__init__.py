@@ -18,8 +18,10 @@
 import random
 import threading
 import time
+from typing import Any
 
-from bluepy import btle
+from bleak import BleakClient, BleakScanner
+import asyncio
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 
@@ -83,19 +85,8 @@ def decrypt_packet(sk, address, packet):
 
     return packet
 
-class Notification(btle.DefaultDelegate):
-    def __init__(self, link, callback):
-        btle.DefaultDelegate.__init__(self)
-        self.link = link
-        self.callback = callback
-
-    def handleNotification(self, cHandle, data):
-      data = list(data)
-      decrypted = decrypt_packet(self.link.sk, self.link.macdata, data)
-      self.callback(self.link.mesh, decrypted)
-
 class dimond:
-  def __init__(self, vendor, mac, name, password, mesh=None, callback=None):
+  def __init__(self, vendor, mac, name, password, mesh=None, callback:Any=None):
     self.vendor = vendor
     self.mac = mac
     self.macarray = mac.split(':')
@@ -109,11 +100,13 @@ class dimond:
   def set_sk(self, sk):
     self.sk = sk
 
-  def connect(self):
-    self.device = btle.Peripheral(self.mac, addrType=btle.ADDR_TYPE_PUBLIC)
-    self.notification = self.device.getCharacteristics(uuid="00010203-0405-0607-0809-0a0b0c0d1911")[0]
-    self.control = self.device.getCharacteristics(uuid="00010203-0405-0607-0809-0a0b0c0d1912")[0]
-    self.pairing = self.device.getCharacteristics(uuid="00010203-0405-0607-0809-0a0b0c0d1914")[0]
+  async def connect(self):
+    self.client = BleakClient(self.mac)
+    await self.client.connect()
+
+    # UUIDs stay the same
+    NOTIFICATION_UUID = "00010203-0405-0607-0809-0a0b0c0d1911"
+    PAIRING_UUID = "00010203-0405-0607-0809-0a0b0c0d1914"
 
     data = [0] * 16
     random_data = get_random_bytes(8)
@@ -124,30 +117,24 @@ class dimond:
     packet += data[0:8]
     packet += enc_data[0:8]
     try:
-      self.pairing.write(bytes(packet), withResponse=True)
-      time.sleep(0.3)
-      data2 = self.pairing.read()
+      await self.client.write_gatt_char(PAIRING_UUID, bytes(packet))
+      await asyncio.sleep(0.3)
+      data2 = await self.client.read_gatt_char(PAIRING_UUID)
     except:
       raise Exception("Unable to connect")
 
     self.sk = generate_sk(self.name, self.password, data[0:8], data2[1:9])
 
     if self.callback is not None:
-      self.device.setDelegate(Notification(self, self.callback))
-      self.notification.write(bytes([0x1]), withResponse=True)
-      thread = threading.Thread(target=self.wait_for_notifications)
-      thread.daemon = True
-      thread.start()
+      async def notification_handler(sender, data):
+          data = list(data)
+          decrypted = decrypt_packet(self.sk, self.macdata, data)
+          self.callback(self.mesh, decrypted)
 
-  def wait_for_notifications(self):
-      while True:
-          try:
-            self.device.waitForNotifications(-1)
-          except btle.BTLEInternalError:
-            # If we get the response to a write then we'll break
-            pass
+      await self.client.start_notify(NOTIFICATION_UUID, notification_handler)
+      await self.client.write_gatt_char(NOTIFICATION_UUID, bytes([0x1]))
 
-  def send_packet(self, target, command, data):
+  async def send_packet(self, target, command, data):
     packet = [0] * 20
     packet[0] = self.packet_count & 0xff
     packet[1] = self.packet_count >> 8 & 0xff
@@ -170,7 +157,8 @@ class dimond:
       if time.time() - initial >= 10:
         raise Exception("Unable to connect")
       try:
-        response = self.control.write(bytes(enc_packet))
+        CONTROL_UUID = "00010203-0405-0607-0809-0a0b0c0d1912"
+        response = await self.client.write_gatt_char(CONTROL_UUID, bytes(enc_packet))
         break
       except:
-        self.connect()
+        await self.connect()

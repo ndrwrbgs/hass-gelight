@@ -32,7 +32,7 @@ from time import time
 from time import sleep
 import sys
 sys.path.append('/config/deps/lib/python3.11/site-packages/')
-import dimond
+from . import dimond
 import threading
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.device_registry import format_mac
