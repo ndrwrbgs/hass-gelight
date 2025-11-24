@@ -1,0 +1,5 @@
+{
+    "name": "Bluetooth Cync Lights Integration",
+    "domains": ["light"],
+    "render_readme": true
+  }
